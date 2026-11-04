@@ -1,0 +1,12 @@
+services:
+  pursuit:
+    build: .
+    ports: ["3000:3000"]
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      - pursuit-data:/data
+    restart: unless-stopped
+volumes:
+  pursuit-data:
