@@ -2,11 +2,13 @@ export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.DISABLE_SCHEDULER === "true") return;
   const { syncAll } = await import("./lib/gmail");
-  const { runBriefs } = await import("./lib/brief");
+  const { runBriefs, runRealtime, purgeDeleted } = await import("./lib/brief");
   const tick = async () => {
     try {
       await syncAll();
+      await runRealtime();
       await runBriefs();
+      purgeDeleted();
     } catch (err) {
       console.error("[scheduler]", err);
     }

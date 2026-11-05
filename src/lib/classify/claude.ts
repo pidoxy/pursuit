@@ -13,6 +13,7 @@ const Schema = z.object({
   type: z.enum(["job", "internship", "fellowship", "grad_school", "scholarship", "research", "program"]),
   deadlines: z.array(z.object({ title: z.string(), due: z.string().describe("YYYY-MM-DD") })),
   summary: z.string().describe("Under 12 words, e.g. 'Interview invitation for Backend Engineer'."),
+  evidence: z.string().nullable().describe("The single sentence from the email, quoted verbatim, that shows the stage (e.g. the interview invitation sentence)."),
   confidence: z.number(),
 });
 
@@ -52,5 +53,6 @@ export async function classifyWithClaude(e: EmailInput): Promise<Classification>
     ask: null,
     summary: p.summary,
     extractor: `claude:${res.model}`,
+    evidence: p.evidence?.slice(0, 280) ?? null,
   };
 }

@@ -141,3 +141,16 @@ describe("subject words that aren't organisations", () => {
     expect(r.org).toBe("Halcyon");
   });
 });
+
+describe("recommendation submitted", () => {
+  const base = { from: "no-reply@portal.org", fromName: "Portal", to: "me@example.com", date: new Date("2026-11-01"), direction: "in" as const };
+  it("flags portal submission notices", () => {
+    expect(classifyRules({ ...base, subject: "Recommendation received", body: "The letter of recommendation from Prof. Ada has been submitted." }).recSubmitted).toBe(true);
+    expect(classifyRules({ ...base, subject: "Update", body: "Your recommender Dr. Lee has submitted their letter." }).recSubmitted).toBe(true);
+  });
+  it("does not confuse an application confirmation with a letter", () => {
+    const c = classifyRules({ ...base, from: "no-reply@hire.lever.co", fromName: "Kestrel Labs", subject: "Application received", body: "Thanks for your cover letter. Your application has been received for the Software Engineer position at Kestrel Labs." });
+    expect(c.recSubmitted).toBeFalsy();
+    expect(c.kind).toBe("received");
+  });
+});

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { parsePostmark } from "@/lib/forward";
+import { sendForwardReceipt } from "@/lib/brief";
 import { ingest } from "@/lib/ingest";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
   const code = to.map((a) => a.split("@")).find(([, h]) => !domain || h === domain)?.[0]?.split("+")[0];
   const user = code ? (db.prepare(`SELECT id FROM users WHERE inbound_code = ?`).get(code.toLowerCase()) as { id: string } | undefined) : undefined;
   if (!user) return Response.json({ ok: true, ignored: "unknown recipient" });
-  const { added } = await ingest(user.id, [{ ...email, source: "forward" }]);
+  const { added, messageIds } = await ingest(user.id, [{ ...email, source: "forward" }]);
+  for (const mid of messageIds) await sendForwardReceipt(user.id, mid).catch((err) => console.error("[receipt]", err));
   return Response.json({ ok: true, added });
 }

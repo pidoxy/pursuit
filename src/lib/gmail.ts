@@ -74,6 +74,24 @@ export function disconnect(userId: string) {
   db.prepare(`DELETE FROM google_accounts WHERE user_id = ?`).run(userId);
 }
 
+/**
+ * "How to leave": revoke Google access and delete everything Pursuit derived from Gmail —
+ * applications it created, their deadlines and classifications. Things you added by hand stay.
+ */
+export function disconnectAndDelete(userId: string) {
+  disconnect(userId);
+  db.transaction(() => {
+    db.prepare(
+      `DELETE FROM opportunities WHERE user_id = ? AND manual_stage = 0 AND confirmed = 0
+         AND EXISTS (SELECT 1 FROM messages m WHERE m.opportunity_id = opportunities.id AND m.source = 'gmail')
+         AND NOT EXISTS (SELECT 1 FROM messages m WHERE m.opportunity_id = opportunities.id AND m.source != 'gmail')`,
+    ).run(userId);
+    db.prepare(`DELETE FROM tasks WHERE user_id = ? AND message_id IN (SELECT id FROM messages WHERE user_id = ? AND source = 'gmail')`).run(userId, userId);
+    db.prepare(`DELETE FROM events WHERE user_id = ? AND message_id IN (SELECT id FROM messages WHERE user_id = ? AND source = 'gmail')`).run(userId, userId);
+    db.prepare(`DELETE FROM messages WHERE user_id = ? AND source = 'gmail'`).run(userId);
+  })();
+}
+
 interface Account {
   user_id: string;
   email: string;

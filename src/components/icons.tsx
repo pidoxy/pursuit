@@ -9,7 +9,7 @@ function base({ size = 20, ...rest }: P) {
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: 1.8,
+    strokeWidth: 1.5,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
     "aria-hidden": true,
@@ -86,7 +86,7 @@ export const AlertIcon = (p: P) => (
 export function Logo({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <rect width="32" height="32" rx="8" fill="var(--accent)" />
+      <rect width="32" height="32" rx="7" fill="var(--accent)" />
       <path d="M9 22.5 15 16.5l3.5 3.5L24 13" fill="none" stroke="var(--accent-ink)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M19.5 12.5H24.5V17.5" fill="none" stroke="var(--accent-ink)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -96,8 +96,8 @@ export function Logo({ size = 28 }: { size?: number }) {
 export function Wordmark() {
   return (
     <span className="inline-flex items-center gap-2">
-      <Logo />
-      <span className="h-display text-[1.25rem] leading-none">Pursuit</span>
+      <Logo size={24} />
+      <span className="h-display text-[17px] leading-none">Pursuit</span>
     </span>
   );
 }
@@ -125,4 +125,28 @@ export const SendIcon = (p: P) => (
 );
 export const FlagIcon = (p: P) => (
   <svg {...base(p)}><path d="M5 21V4M5 4h11l-2 4 2 4H5" /></svg>
+);
+export const SearchIcon = (p: P) => (
+  <svg {...base(p)}><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
+);
+export const ArchiveIcon = (p: P) => (
+  <svg {...base(p)}><rect x="3" y="4" width="18" height="4.5" rx="1" /><path d="M5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 12.5h4" /></svg>
+);
+export const MoveIcon = (p: P) => (
+  <svg {...base(p)}><path d="M4 12h14M14 7l5 5-5 5" /></svg>
+);
+export const LockIcon = (p: P) => (
+  <svg {...base(p)}><rect x="5" y="10.5" width="14" height="10" rx="2" /><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" /></svg>
+);
+export const EyeIcon = (p: P) => (
+  <svg {...base(p)}><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.5" /></svg>
+);
+export const DoorIcon = (p: P) => (
+  <svg {...base(p)}><path d="M14 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h8M10 12h11M18 9l3 3-3 3" /></svg>
+);
+export const TrashIcon = (p: P) => (
+  <svg {...base(p)}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3" /></svg>
+);
+export const MoonIcon = (p: P) => (
+  <svg {...base(p)}><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" /></svg>
 );

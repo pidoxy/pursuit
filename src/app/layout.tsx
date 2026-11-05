@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import "@fontsource-variable/inter";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Pursuit — every application, tracked for you", template: "%s · Pursuit" },
+  title: { default: "Pursuit · every application, tracked from your inbox", template: "%s · Pursuit" },
   description:
     "Pursuit reads your application email and tracks every job, internship, fellowship and grad-school application, deadline and follow-up.",
   applicationName: "Pursuit",
@@ -11,8 +12,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f8fa" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e1015" },
+    { media: "(prefers-color-scheme: light)", color: "#f9fafd" },
+    { media: "(prefers-color-scheme: dark)", color: "#131417" },
   ],
   width: "device-width",
   initialScale: 1,

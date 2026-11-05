@@ -51,7 +51,8 @@ export async function destroySession() {
   jar.delete(COOKIE);
 }
 
-const USER_COLS = `u.id, u.email, u.name, u.timezone, u.inbound_code, u.followup_days, u.stale_days, u.brief_enabled`;
+export const USER_COLS = `u.id, u.email, u.name, u.timezone, u.inbound_code, u.followup_days, u.stale_days, u.brief_enabled,
+  u.digest_cadence, u.digest_hour, u.paused_until, u.realtime_enabled, u.onboarded, u.last_receipt_at`;
 
 export async function currentUser(): Promise<User | null> {
   const jar = await cookies();

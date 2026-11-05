@@ -9,11 +9,11 @@ export * from "./rules";
  */
 export async function classify(e: EmailInput): Promise<Classification> {
   const rules = classifyRules(e);
-  if (e.direction === "out" || !claudeAvailable()) return rules;
+  if (e.direction === "out" || rules.recSubmitted || !claudeAvailable()) return rules;
   if (!rules.relevant && rules.confidence < 0.2) return rules; // obvious noise: don't spend tokens
   try {
     const ai = await classifyWithClaude(e);
-    return { ...ai, deadlines: ai.deadlines.length ? ai.deadlines : rules.deadlines };
+    return { ...ai, deadlines: ai.deadlines.length ? ai.deadlines : rules.deadlines, evidence: ai.evidence ?? rules.evidence };
   } catch (err) {
     console.error("[classify] Claude failed, using rules:", err);
     return rules;

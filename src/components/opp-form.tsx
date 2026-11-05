@@ -5,16 +5,21 @@ import { saveOpportunity } from "@/app/app/actions";
 import type { Opportunity } from "@/lib/types";
 import { STAGE_STYLE, TYPE_LABEL } from "./badges";
 import { FormError, SubmitButton } from "./submit";
+import { useToast } from "./toast";
 
 export function OppForm({ opp, onDone }: { opp?: Opportunity; onDone: () => void }) {
   const [state, action] = useActionState(saveOpportunity, undefined);
   const router = useRouter();
+  const { push } = useToast();
   useEffect(() => {
     if (state?.ok) {
       onDone();
+      push({ message: opp ? "Saved" : "Opportunity added" });
+      // Narrow-default rule offer after a correction: "Yes" or "Just this once".
+      if (state.prompt) push({ message: state.prompt.label, prompt: state.prompt });
       if (!opp && state.id) router.push(`/app/o/${state.id}`);
     }
-  }, [state, onDone, opp, router]);
+  }, [state, onDone, opp, router, push]);
   return (
     <form action={action} className="space-y-4">
       {opp && <input type="hidden" name="id" value={opp.id} />}

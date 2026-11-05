@@ -39,6 +39,10 @@ export interface Classification {
   ask: { kind: "recommendation" | "review" | "referral"; personName: string | null; personEmail: string } | null;
   summary: string;
   extractor: string;
+  /** The exact sentence that drove the decision (provenance shown in the UI). */
+  evidence?: string | null;
+  /** A portal/recommender email saying a letter was submitted. */
+  recSubmitted?: boolean;
 }
 
 // ───────────────────────── vocab ─────────────────────────
@@ -68,6 +72,18 @@ const ASSESSMENT_DONE = /(thank(s| you) for (taking|completing|submitting) (the|
 const ASSESSMENT = /(assessment|coding challenge|online test|hackerrank|codesignal|codility|take[- ]home|technical test|aptitude test|test invitation|programming (test|challenge|exercise)|case study|game-based|psychometric|online exercise)/i;
 const INFO_REQUEST = /(action required|please (provide|submit|send|complete|upload|confirm)|kindly (provide|submit|send|complete)|additional (information|documents)|missing (documents|information)|complete your (application|profile|registration)|reference (request|details)|we need (a few|some) more)/i;
 const RECEIVED = /(thank(s| you) for (applying|your application|your interest in|submitting your application|taking the leap and applying)|application (has been |was )?(received|submitted|is in)|we('ve| have) received your application|successfully (applied|submitted)|your application (to|for|with) .{2,60} (has been|is being|is under) (received|review|consideration)|under consideration|thank you for applying|application confirmation|application received)/i;
+const REC_SUBMITTED = /((recommendation|reference letter|letter of (recommendation|support)|referee report)[^\n]{0,80}\b(has been|was|have been)\s+(submitted|received|completed|uploaded))|(\b(recommender|referee)\b[^\n]{0,60}\b(has|have)\s+(submitted|completed|uploaded)\b)/i;
+
+const KIND_REGEX: Partial<Record<Kind, RegExp>> = {};
+
+/** First sentence of the email (or the subject) that matches the rule behind a decision. */
+export function evidenceFor(subject: string, body: string, re: RegExp | undefined): string | null {
+  if (!re) return null;
+  const sentences = body.slice(0, 4000).split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter(Boolean);
+  const hit = sentences.find((x) => re.test(x)) ?? (re.test(subject) ? subject : null);
+  return hit ? hit.slice(0, 280) : null;
+}
+
 const APPLICATION_WORDS = /\b(application|applied|applying|candidate|candidacy|position|role|internship|fellowship|scholarship|admission|programme|program|cohort|interview|assessment|offer)\b/i;
 
 const TYPE_RULES: [RegExp, OppType][] = [
@@ -78,6 +94,11 @@ const TYPE_RULES: [RegExp, OppType][] = [
   [/\b(intern|internship|summer(\s+\d{4})?\s+(analyst|associate|intern)|placement|industrial training|co-?op)\b/i, "internship"],
   [/\b(programme|program|bootcamp|accelerator|cohort|academy|dreamdevs)\b/i, "program"],
 ];
+
+Object.assign(KIND_REGEX, {
+  rejection: REJECTION, offer: OFFER, assessment_done: ASSESSMENT_DONE, interview: INTERVIEW_INVITE,
+  assessment: ASSESSMENT, received: RECEIVED, info_request: INFO_REQUEST,
+});
 
 // ───────────────────────── helpers ─────────────────────────
 
@@ -264,6 +285,15 @@ const SUMMARY: Record<Kind, string> = {
 // ───────────────────────── main ─────────────────────────
 
 export function classifyRules(e: EmailInput): Classification {
+  const c = classifyCore(e);
+  if (e.direction === "in" && REC_SUBMITTED.test(`${e.subject}\n${e.body}`)) {
+    // Flag it; ingest marks the matching ask as submitted, or falls back to normal handling.
+    return { ...c, recSubmitted: true, evidence: c.evidence ?? evidenceFor(e.subject, e.body, REC_SUBMITTED), summary: c.summary || "Recommendation submitted" };
+  }
+  return c;
+}
+
+function classifyCore(e: EmailInput): Classification {
   const subj = e.subject.replace(/^(re|fwd?|fw):\s*/gi, "");
   const text = `${subj}\n${e.body}`;
   const empty: Classification = {
@@ -356,6 +386,7 @@ export function classifyRules(e: EmailInput): Classification {
     ask: null,
     summary: SUMMARY[kind] + (role ? ` · ${role}` : ""),
     extractor: "rules",
+    evidence: evidenceFor(subj, e.body, KIND_REGEX[kind]) ?? (li ? subj : null),
   };
 }
 

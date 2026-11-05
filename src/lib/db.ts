@@ -155,6 +155,35 @@ const MIGRATIONS: string[] = [
     sent_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
   );
   `,
+  // 002 — design spec: soft delete + undo, snooze, confirmation state, rules, notification policy
+  `
+  ALTER TABLE opportunities ADD COLUMN deleted_at TEXT;
+  ALTER TABLE opportunities ADD COLUMN confirmed INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE tasks ADD COLUMN snoozed_until TEXT;
+  ALTER TABLE tasks ADD COLUMN done_at TEXT;
+  ALTER TABLE tasks ADD COLUMN deleted_at TEXT;
+  ALTER TABLE messages ADD COLUMN snoozed_until TEXT;
+  ALTER TABLE people ADD COLUMN deleted_at TEXT;
+  ALTER TABLE snippets ADD COLUMN deleted_at TEXT;
+  ALTER TABLE asks ADD COLUMN submitted_at TEXT;
+    ALTER TABLE events ADD COLUMN evidence TEXT;
+    ALTER TABLE users ADD COLUMN last_receipt_at TEXT;
+  ALTER TABLE users ADD COLUMN digest_cadence TEXT NOT NULL DEFAULT 'daily';
+  ALTER TABLE users ADD COLUMN digest_hour INTEGER NOT NULL DEFAULT 7;
+  ALTER TABLE users ADD COLUMN paused_until TEXT;
+  ALTER TABLE users ADD COLUMN realtime_enabled INTEGER NOT NULL DEFAULT 1;
+  ALTER TABLE users ADD COLUMN onboarded INTEGER NOT NULL DEFAULT 0;
+
+  CREATE TABLE user_rules (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('ignore_sender','ignore_domain','org_alias')),
+    match TEXT NOT NULL,
+    value TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  );
+  CREATE INDEX rules_user ON user_rules(user_id, kind);
+  `,
 ];
 
 function migrate(db: Database.Database) {

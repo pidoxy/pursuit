@@ -19,6 +19,6 @@ export async function GET(req: Request) {
   } catch (err) {
     return back(`error=${encodeURIComponent(err instanceof Error ? err.message : "google-failed")}`);
   }
-  void syncUser(user.id); // backfill runs in the background; the UI polls
-  return back("connected=1");
+  void syncUser(user.id); // backfill runs in the background; the onboarding scan screen polls
+  return Response.redirect(new URL("/app/connect?step=scan", req.url));
 }

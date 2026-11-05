@@ -7,6 +7,20 @@ export interface User {
   followup_days: number;
   stale_days: number;
   brief_enabled: number;
+  digest_cadence: "daily" | "weekdays" | "weekly";
+  digest_hour: number;
+  paused_until: string | null;
+  realtime_enabled: number;
+  onboarded: number;
+  last_receipt_at: string | null;
+}
+
+export interface UserRule {
+  id: string;
+  kind: "ignore_sender" | "ignore_domain" | "org_alias";
+  match: string;
+  value: string | null;
+  created_at: string;
 }
 
 export interface Opportunity {
@@ -26,6 +40,8 @@ export interface Opportunity {
   last_inbound_at: string | null;
   manual_stage: number;
   archived: number;
+  confirmed: number;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -47,6 +63,7 @@ export interface Message {
   status: "new" | "matched" | "review" | "ignored" | "irrelevant";
   opportunity_id: string | null;
   classification: string | null;
+  snoozed_until: string | null;
 }
 
 export interface EventRow {
@@ -56,6 +73,7 @@ export interface EventRow {
   kind: string;
   at: string;
   summary: string;
+  evidence: string | null;
 }
 
 export interface Task {
@@ -65,6 +83,8 @@ export interface Task {
   title: string;
   due_at: string | null;
   done: number;
+  done_at: string | null;
+  snoozed_until: string | null;
   created_at: string;
 }
 
@@ -83,6 +103,7 @@ export interface Ask {
   status: "to_ask" | "asked" | "agreed" | "submitted" | "declined";
   due_at: string | null;
   notes: string | null;
+  submitted_at: string | null;
   created_at: string;
   updated_at: string;
 }

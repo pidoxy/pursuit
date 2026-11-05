@@ -1,8 +1,8 @@
 # Pursuit
 
-**Every application, deadline and follow-up, tracked for you.** Pursuit reads your application email (Gmail read-only, forwarding, or import) and keeps your whole pipeline of jobs, internships, fellowships, grad school, scholarships and research positions in one place.
+**Every application, tracked from your inbox.** Pursuit reads your application email (Gmail read-only, forwarding, or import) and keeps your whole pipeline of jobs, internships, fellowships, grad school, scholarships and research positions in one place.
 
-![Today](docs/screenshots/02-today.png)
+![Today](docs/screenshots/05-today.png)
 
 - **Builds itself from email.** Confirmations, assessments, interviews, offers and rejections from Greenhouse, Lever, Workday, Oracle HCM, HackerRank, Hireflix, university admissions and direct recruiter mail become opportunities with a stage and a timeline.
 - **Deadlines pulled from the email.** "Complete the video interview by Tuesday" and "within 5 days" become dated tasks. Tasks close themselves when a later email shows they're done (assessment submitted, you replied to the offer).
@@ -10,14 +10,16 @@
 - **Recommenders & reviewers.** Emails asking for a letter or a draft review are tracked automatically per application: asked, then agreed, then submitted.
 - **Answer bank.** Reusable paragraphs (bio, research pitch, "why us") with one-click copy.
 - **Insights.** Applications per month, the funnel, response rate by type, and median days to first reply.
-- **Human in the loop.** Uncertain emails wait in **Review**, every stage change links to the email that caused it, and manual edits are never overwritten.
+- **Human in the loop.** Uncertain emails and recent closings wait in **Review**, one at a time, with the sentence Pursuit used highlighted. Every timeline event quotes its source, and manual edits are never overwritten.
+- **Keyboard-fast, with undo.** ⌘K palette, J/K lists, E/H/D/M item keys, 1/2/3 triage, C quick add ("Rhodes essay due Nov 20"). Every action shows an Undo toast (Z) instead of a confirm dialog.
+- **Calm by default.** Today is a finite queue that ends in "Done for today". Closings show in gray and never notify you. You get one digest at your chosen hour, real-time email only for interviews and deadlines under 48h, and you can pause for a week.
 - **Private.** Gmail scope is read-only and tokens are encrypted at rest. Pursuit never sends email. Export or delete everything at any time.
 
 Docs: [Product requirements](docs/PRD.md) · [Design](docs/DESIGN.md)
 
 | Pipeline | Opportunity | Insights |
 |---|---|---|
-| ![](docs/screenshots/03-pipeline.png) | ![](docs/screenshots/04-opportunity.png) | ![](docs/screenshots/07-insights.png) |
+| ![](docs/screenshots/09-pipeline.png) | ![](docs/screenshots/07-opportunity.png) | ![](docs/screenshots/13-insights.png) |
 
 ---
 
@@ -29,7 +31,7 @@ It works **without an AI key**. A rule engine, tuned against real hiring-platfor
 - **role, type and deadlines:** for example "within 5 days", or "by November 10";
 - **outbound asks:** "Request for Recommendation – …", "… Draft Review".
 
-44 unit tests cover it, including regressions found by backfilling a real inbox: accented names (CaCTüS), "applying to X" versus roles, application cycles by year, and a person's name versus the company.
+49 unit and integration tests cover it, including regressions found by backfilling a real inbox: accented names (CaCTüS), "applying to X" versus roles, application cycles by year, and a person's name versus the company.
 
 With `ANTHROPIC_API_KEY` set, Claude refines anything the rules found plausible, using structured output (with refusal fallbacks enabled). Obvious noise never reaches the model, and email content is always treated as data, never as instructions.
 
@@ -43,10 +45,10 @@ cp .env.example .env.local      # set APP_SECRET; Gmail and AI are optional
 npm run dev                     # http://localhost:3000
 ```
 
-Try it without Gmail: sign up, then import the fictional demo data from **Settings → Import**.
+Try it without Gmail: sign up and choose **See it with sample data** to load a fictional inbox. To get the same data as a file:
 
 ```bash
-node scripts/demo-data.mjs > demo.json
+node --experimental-strip-types scripts/demo-data.mjs > demo.json
 ```
 
 ## Connect Gmail (read-only)
@@ -87,15 +89,15 @@ cp .env.example .env && docker compose up -d --build
 
 **Forwarding (optional).** Point an inbound email provider (e.g. Postmark Inbound) at `<APP_URL>/api/inbound/postmark?secret=<INBOUND_SECRET>` and set `INBOUND_DOMAIN`. Each user gets a private address. Manually forwarded `Fwd:` emails are unwrapped to their original sender.
 
-**Morning brief (optional).** Set `SMTP_URL` and `MAIL_FROM`.
+**Email (optional).** Set `SMTP_URL` and `MAIL_FROM` for the digest (daily, weekdays or weekly at the user's hour), real-time alerts for interviews and deadlines under 48h, and receipts for forwarded emails.
 
 ## Development
 
 ```bash
-npm test            # 44 unit + integration tests (classifier, ingestion, follow-ups, insights)
+npm test            # 49 unit + integration tests (classifier, ingestion, follow-ups, insights)
 npm run typecheck && npm run lint
 npm run build && npm start
-INBOUND_SECRET=testsecret node scripts/e2e.mjs   # 30-step browser test against a running server
+INBOUND_SECRET=testsecret node scripts/e2e.mjs   # 51-check browser test (onboarding, keys, palette, undo, review) against a running server
 ```
 
 ```

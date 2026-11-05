@@ -1,6 +1,6 @@
 # Pursuit — Product Requirements Document
 
-**Status:** v1.0 (MVP) · **Owner:** Emmanuel Idoko · **Last updated:** 2026-11-04
+**Status:** v1.1 · **Owner:** Emmanuel Idoko · **Last updated:** 2026-11-05
 
 > Pursuit reads your application email and keeps your whole pipeline in one place: jobs, internships, fellowships, grad school, scholarships and research positions. It shows every application's stage, extracts deadlines and to-dos from the mail itself, tells you who you owe a follow-up, tracks recommenders and reviewers, and keeps your best answers ready to reuse.
 
@@ -101,6 +101,14 @@ Peers in mentoring cohorts (e.g. MLC Africa's grad-school support group) have th
 1. **Today first:** the home screen is a to-do list, not a dashboard.
 2. **Show the source:** every stage change links to the email that caused it.
 3. **Calm density:** an information-dense tool with clear hierarchy: cool paper neutrals and a single indigo accent.
+
+### 6.1 v1.1 design update
+Based on a design and UX benchmark (see `docs/DESIGN.md`):
+- **Trust.** Pre-OAuth explainer and landing privacy section (what Pursuit reads, what it never does, how to leave, and the Limited Use sentence). Every event stores the evidence sentence. Uncertainty appears in words, not percentages. Disconnecting deletes everything derived from Gmail.
+- **Calm.** Recent closings (≤14 days) go to Review instead of auto-applying, and they are shown in gray as Closed. Notifications are digest-first (daily, weekdays or weekly at a chosen hour). Only interview invites and deadlines under 48h send email in real time. Pause for 7 days is available.
+- **Speed.** ⌘K palette, global and list shortcuts, Review verdicts on 1/2/3/H/E, natural-language quick add, and undo toasts that replace confirm dialogs (soft delete, purged after 24h).
+- **Onboarding.** Path choice, a sample-data sandbox, live scan counts and a guided first triage.
+- **Data.** Ignore-sender and ignore-domain rules plus organisation aliases, offered narrowly after a correction. Portal "recommendation submitted" emails close the matching ask. Tasks and review items can be snoozed. "Mark stale as dormant" handles applications quiet for 60+ days.
 
 ## 7. Success metrics
 | Metric | Target |

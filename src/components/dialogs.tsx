@@ -6,9 +6,9 @@ import { AskForm, PersonForm, SnippetForm } from "./forms";
 import { PencilIcon, PlusIcon } from "./icons";
 import { OppForm } from "./opp-form";
 
-export function NewOppButton() {
+export function NewOppButton({ autoOpen = false }: { autoOpen?: boolean }) {
   return (
-    <DialogButton title="Add an opportunity" className="btn btn-primary" label={<><PlusIcon size={17} /> Add</>}>
+    <DialogButton autoOpen={autoOpen} title="Add an opportunity" className="btn btn-primary" label={<><PlusIcon size={16} /> Add</>}>
       {(close) => <OppForm onDone={close} />}
     </DialogButton>
   );

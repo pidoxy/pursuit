@@ -7,13 +7,15 @@ export function DialogButton({
   title,
   className = "btn btn-secondary",
   children,
+  autoOpen = false,
 }: {
   label: React.ReactNode;
   title: string;
   className?: string;
   children: (close: () => void) => React.ReactNode;
+  autoOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -30,11 +32,11 @@ export function DialogButton({
         ref={ref}
         onClose={() => setOpen(false)}
         onClick={(e) => e.target === ref.current && setOpen(false)}
-        className="m-auto w-[min(560px,calc(100vw-24px))] max-h-[90dvh] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-ink shadow-lg backdrop:bg-black/40"
+        className="float m-auto max-h-[90dvh] w-[min(560px,calc(100vw-24px))] overflow-y-auto rounded-xl p-0 text-ink"
       >
         {open && (
           <div className="p-6">
-            <h2 className="h-display mb-5 text-xl">{title}</h2>
+            <h2 className="h-section mb-4">{title}</h2>
             {children(() => setOpen(false))}
           </div>
         )}

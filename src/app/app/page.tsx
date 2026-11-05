@@ -1,200 +1,202 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { NewOppButton } from "@/components/dialogs";
 import { today as todayData } from "@/lib/data";
 import { db } from "@/lib/db";
 import { draftFollowUp, gmailComposeUrl } from "@/lib/followups";
 import { gmailLink } from "@/lib/urls";
-import { zonedDate, zonedParts, formatDay } from "@/lib/time";
+import { formatDay, zonedDate, zonedParts } from "@/lib/time";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { OrgAvatar, StageBadge } from "@/components/badges";
 import { FollowUpCard } from "@/components/followup-card";
-import { ChevronRight, MailIcon, SendIcon } from "@/components/icons";
+import { ChevronRight, MailIcon } from "@/components/icons";
 import { SyncButton } from "@/components/sync-button";
 import { TaskItem } from "@/components/task-item";
+import { ThanksDraft } from "@/components/people-drafts";
 
 export const metadata = { title: "Today" };
 
 const KIND_LABEL: Record<string, string> = {
   received: "Application received", assessment: "Assessment", assessment_done: "Assessment submitted",
-  interview: "Interview", offer: "Offer", rejection: "Not moving forward", info_request: "Information requested",
+  interview: "Interview", offer: "Offer", info_request: "Information requested",
 };
+
+/** Calm completion lines, one per day. No streaks. */
+const DONE_LINES = [
+  "That's everything for today. Pursuit will tell you when something needs you.",
+  "Nothing needs you right now. Go do something else.",
+  "All clear. New deadlines and replies will show up here on their own.",
+  "Done for today. Waiting is part of the process.",
+];
 
 function ago(iso: string) {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400_000);
   return d <= 0 ? "today" : d === 1 ? "yesterday" : `${d}d ago`;
 }
 
+function Section({ title, meta, children }: { title: string; meta?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section aria-label={title}>
+      <div className="mb-1.5 flex items-baseline justify-between gap-3 border-b border-line pb-2">
+        <h2 className="h-section">{title}</h2>
+        {meta && <span className="text-[12px] text-muted">{meta}</span>}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export default async function TodayPage() {
   const user = await requireUser();
+  const gmail = db.prepare(`SELECT email, backfill_state, last_sync_at, last_error FROM google_accounts WHERE user_id = ?`).get(user.id) as
+    | { email: string; backfill_state: string; last_sync_at: string | null; last_error: string | null }
+    | undefined;
+  const { n: oppCount } = db.prepare(`SELECT COUNT(*) n FROM opportunities WHERE user_id = ? AND deleted_at IS NULL`).get(user.id) as { n: number };
+  if (!user.onboarded && oppCount === 0 && !gmail) redirect("/app/connect");
+
   const t = todayData(user);
   const now = new Date();
   const todayStr = zonedDate(now, user.timezone);
   const hour = zonedParts(now, user.timezone).hour;
-  const gmail = db.prepare(`SELECT email, backfill_state, last_sync_at, last_error FROM google_accounts WHERE user_id = ?`).get(user.id) as
-    | { email: string; backfill_state: string; last_sync_at: string | null; last_error: string | null }
-    | undefined;
-  const { n: oppCount } = db.prepare(`SELECT COUNT(*) n FROM opportunities WHERE user_id = ?`).get(user.id) as { n: number };
-  const { n: openCount } = db.prepare(`SELECT COUNT(*) n FROM opportunities WHERE user_id = ? AND archived = 0 AND stage NOT IN ('closed')`).get(user.id) as { n: number };
   const backfilling = gmail && gmail.backfill_state !== "done";
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const needs = [...t.overdue, ...t.dueSoon];
+  const e = t.effort;
+  const effortParts = [
+    `${e.sent} sent`,
+    e.followUpsSent ? `${e.followUpsSent} follow-up${e.followUpsSent === 1 ? "" : "s"} done` : null,
+    e.tasksDone ? `${e.tasksDone} task${e.tasksDone === 1 ? "" : "s"} done` : null,
+    e.applied ? `${e.applied} applied` : null,
+  ].filter(Boolean);
+  const waitingCount = t.asks.length + t.stale.length + t.submitted.length;
+  const clear = t.queueSize === 0;
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8">
       <AutoRefresh active={Boolean(backfilling)} ms={4000} />
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">{formatDay(todayStr)}</p>
-          <h1 className="h-display mt-1 text-3xl sm:text-[2.1rem]">{greeting}, {user.name.split(" ")[0]}.</h1>
-          <p className="mt-1 text-ink-2">
-            {needs.length + t.followUps.length === 0
-              ? "Nothing urgent. Nice."
-              : `${needs.length} ${needs.length === 1 ? "thing" : "things"} due, ${t.followUps.length} ${t.followUps.length === 1 ? "follow-up" : "follow-ups"} owed.`}
-          </p>
+          <p className="eyebrow"><time dateTime={todayStr}>{formatDay(todayStr)}</time></p>
+          <h1 className="h-page mt-1">{greeting}, {user.name.split(" ")[0]}.</h1>
+          <p className="mt-1 text-[14px] text-muted">This week: {effortParts.join(", ")}.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           {gmail && <SyncButton />}
-          <NewOppButton />
+          <Link href="/app/review" className="btn btn-ghost btn-sm">
+            {t.review ? <><span className="size-2 rounded-full bg-accent" aria-hidden /> Review</> : "Review"}
+          </Link>
         </div>
-      </div>
+      </header>
 
       {backfilling && (
-        <div className="flex items-center gap-3 rounded-xl border border-accent/30 bg-accent-soft p-4 text-sm">
-          <MailIcon className="shrink-0 animate-pulse-soft text-accent" />
-          <p><strong>Reading your Gmail…</strong> Pursuit is going through the last 6 months of application email. Opportunities appear here as they&apos;re found.</p>
+        <div className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-[14px]">
+          <MailIcon className="shrink-0 text-accent" size={18} />
+          <p><span className="font-medium">Reading your Gmail…</span> Applications appear here as they&apos;re found.</p>
         </div>
       )}
       {gmail?.last_error && !backfilling && (
-        <p className="rounded-xl bg-danger-soft px-4 py-3 text-sm text-danger">Gmail sync problem: {gmail.last_error} <Link className="underline" href="/app/settings">Settings</Link></p>
+        <p className="rounded-lg border border-line bg-surface px-4 py-3 text-[14px] text-ink-2">
+          Gmail sync stopped: {gmail.last_error} <Link className="text-accent underline" href="/app/settings">Fix in Settings</Link>
+        </p>
       )}
 
       {oppCount === 0 && !backfilling ? (
-        <div className="card p-8 text-center sm:p-12">
-          <h2 className="h-display text-2xl">Let&apos;s build your pipeline</h2>
-          <p className="mx-auto mt-2 max-w-md text-ink-2">Connect Gmail (read-only) and Pursuit finds every application, interview and rejection from the last six months — or add one by hand.</p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Link href="/app/settings" className="btn btn-primary">Connect Gmail</Link>
-            <Link href="/app/settings#import" className="btn btn-secondary">Import or forward email</Link>
+        <div className="card px-6 py-12 text-center">
+          <h2 className="h-section">Let&apos;s build your pipeline</h2>
+          <p className="mx-auto mt-1 max-w-md text-[14px] text-muted">Connect Gmail (read-only) and Pursuit finds every application from the last six months, or try it with sample data first.</p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Link href="/app/connect" className="btn btn-primary">Get started</Link>
           </div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {[
-              { label: "Open applications", value: openCount, href: "/app/pipeline" },
-              { label: "Due this week", value: needs.length, tone: t.overdue.length ? "danger" : undefined },
-              { label: "Follow-ups owed", value: t.followUps.length },
-              { label: "To review", value: t.review, href: "/app/review" },
-            ].map((s) => {
-              const inner = (
-                <>
-                  <p className="text-[13px] text-muted">{s.label}</p>
-                  <p className={`mt-1 text-[1.9rem] font-bold leading-none tracking-tight ${s.tone === "danger" ? "text-danger" : ""}`}>{s.value}</p>
-                </>
-              );
-              return s.href ? (
-                <Link key={s.label} href={s.href} className="card p-4 transition-shadow hover:shadow-md">{inner}</Link>
-              ) : (
-                <div key={s.label} className="card p-4">{inner}</div>
-              );
-            })}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[1.25fr_1fr]">
-            <div className="min-w-0 space-y-6">
-              <section className="card p-5">
-                <div className="flex items-baseline justify-between">
-                  <h2 className="font-semibold">Needs you</h2>
-                  {t.overdue.length > 0 && <span className="text-sm font-semibold text-danger">{t.overdue.length} overdue</span>}
-                </div>
-                {needs.length ? (
-                  <ul className="mt-2 divide-y divide-line">
-                    {needs.map((x) => <TaskItem key={x.id} task={x} today={todayStr} />)}
-                  </ul>
-                ) : (
-                  <p className="mt-3 text-sm text-muted">No deadlines in the next 7 days.</p>
-                )}
-                {t.later.length > 0 && <p className="mt-3 text-xs text-muted">+ {t.later.length} later or undated</p>}
-              </section>
-
-              <section>
-                <div className="mb-3 flex items-center gap-2">
-                  <SendIcon size={17} className="text-muted" />
-                  <h2 className="font-semibold">Follow-ups you owe</h2>
-                  <span className="text-sm text-muted">· no reply after {user.followup_days}+ days</span>
-                </div>
-                {t.followUps.length ? (
-                  <ul className="space-y-2.5">
-                    {t.followUps.slice(0, 8).map((f) => {
-                      const d = draftFollowUp(f, user.name);
-                      return <FollowUpCard key={f.threadId} f={f} draft={d} composeUrl={gmailComposeUrl(f.to, d.subject, d.body)} threadUrl={gmailLink(f.threadId)} />;
-                    })}
-                  </ul>
-                ) : (
-                  <p className="rounded-xl border border-dashed border-line-strong p-5 text-sm text-muted">Nobody is waiting on you. {gmail ? "" : "Connect Gmail so Pursuit can see your sent mail."}</p>
-                )}
-              </section>
+          {clear ? (
+            <div className="card animate-fade px-6 py-10 text-center">
+              <svg width="40" height="40" viewBox="0 0 40 40" className="mx-auto text-sage" aria-hidden>
+                <circle cx="20" cy="20" r="17" fill="var(--sage-soft)" />
+                <path d="m13 20.5 4.5 4.5L27 15.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <p className="h-section mt-3">Done for today</p>
+              <p className="mx-auto mt-1 max-w-sm text-[14px] text-muted">{DONE_LINES[now.getUTCDate() % DONE_LINES.length]}</p>
             </div>
+          ) : (
+            <p className="text-[12px] text-muted max-sm:hidden">
+              <span className="kbd">J</span> <span className="kbd">K</span> move · <span className="kbd">E</span> done · <span className="kbd">H</span> snooze · <span className="kbd">D</span> draft · <span className="kbd">Z</span> undo · <span className="kbd">C</span> quick add
+            </p>
+          )}
 
-            <div className="min-w-0 space-y-6">
-              <section className="card p-5">
-                <h2 className="font-semibold">What changed this week</h2>
-                {t.updates.length ? (
-                  <ul className="mt-3 space-y-3">
-                    {t.updates.slice(0, 8).map((e) => (
-                      <li key={e.id}>
-                        <Link href={`/app/o/${e.opportunity_id}`} className="group flex items-center gap-3">
-                          <OrgAvatar org={e.org} size={32} />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold group-hover:text-accent">{e.org}</p>
-                            <p className="truncate text-xs text-muted">{KIND_LABEL[e.kind] ?? e.summary} · {ago(e.at)}</p>
-                          </div>
-                          <StageBadge stage={e.stage} outcome={e.kind === "rejection" ? "rejected" : undefined} />
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-3 text-sm text-muted">No news in the last 7 days.</p>
-                )}
-              </section>
+          {t.due.length > 0 && (
+            <Section title="Due" meta={`${t.due.length} in the next 7 days`}>
+              <ul>{t.due.map((x) => <TaskItem key={x.id} task={x} today={todayStr} />)}</ul>
+            </Section>
+          )}
 
-              {t.asks.length > 0 && (
-                <section className="card p-5">
-                  <div className="flex items-baseline justify-between">
-                    <h2 className="font-semibold">Waiting on others</h2>
-                    <Link href="/app/people" className="text-sm text-muted hover:text-accent">People</Link>
-                  </div>
-                  <ul className="mt-3 space-y-2.5 text-sm">
-                    {t.asks.slice(0, 6).map((a) => (
-                      <li key={a.id} className="flex items-center justify-between gap-3">
-                        <span className="min-w-0 truncate"><strong>{a.person_name}</strong> <span className="text-muted">· {a.kind}{a.org ? ` for ${a.org}` : ""}</span></span>
-                        <span className="chip shrink-0 capitalize">{a.status.replace("_", " ")}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
+          {t.followUps.length > 0 && (
+            <Section title="Follow-ups you could send" meta={`no reply after ${user.followup_days}+ days`}>
+              <ul>
+                {t.followUps.slice(0, 8).map((f) => {
+                  const d = draftFollowUp(f, user.name);
+                  return <FollowUpCard key={f.threadId} f={f} draft={d} composeUrl={gmailComposeUrl(f.to, d.subject, d.body)} threadUrl={gmailLink(f.threadId)} />;
+                })}
+              </ul>
+            </Section>
+          )}
 
-              {t.stale.length > 0 && (
-                <section className="card p-5">
-                  <h2 className="font-semibold">Gone quiet</h2>
-                  <p className="text-xs text-muted">No news for {user.stale_days}+ days. Chase, or close them out.</p>
-                  <ul className="mt-3 space-y-2">
-                    {t.stale.slice(0, 6).map((o) => (
-                      <li key={o.id}>
-                        <Link href={`/app/o/${o.id}`} className="group flex items-center justify-between gap-3 text-sm">
-                          <span className="min-w-0 truncate"><strong className="group-hover:text-accent">{o.org}</strong> <span className="text-muted">{o.role ? `· ${o.role}` : ""}</span></span>
-                          <span className="flex shrink-0 items-center gap-1 text-xs text-muted">{ago(o.last_inbound_at ?? o.applied_at ?? o.created_at)} <ChevronRight size={14} /></span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </div>
-          </div>
+          {waitingCount > 0 && (
+            <Section title="Waiting on others" meta={<Link href="/app/people" className="hover:text-accent">People</Link>}>
+              <ul className="divide-y divide-line">
+                {t.submitted.map((a) => (
+                  <li key={a.id} className="py-2.5">
+                    <p className="text-[14px]"><span className="font-medium">{a.person_name}</span> <span className="text-muted">submitted their letter{a.org ? ` for ${a.org}` : ""}.</span></p>
+                    <ThanksDraft name={a.person_name} email={a.person_email} org={a.org} sender={user.name} />
+                  </li>
+                ))}
+                {t.asks.slice(0, 6).map((a) => (
+                  <li key={a.id} className="flex items-center justify-between gap-3 py-2.5 text-[14px]">
+                    <span className="min-w-0 truncate"><span className="font-medium">{a.person_name}</span> <span className="text-muted">· {a.kind}{a.org ? ` for ${a.org}` : ""}</span></span>
+                    <span className="chip shrink-0 capitalize">{a.status === "asked" ? "requested" : a.status === "agreed" ? "accepted" : a.status.replace("_", " ")}</span>
+                  </li>
+                ))}
+                {t.stale.slice(0, 6).map((o) => (
+                  <li key={o.id}>
+                    <Link href={`/app/o/${o.id}`} className="row-hover -mx-2 flex items-center justify-between gap-3 rounded-md px-2 py-2.5 text-[14px]">
+                      <span className="min-w-0 truncate"><span className="font-medium">{o.org}</span> <span className="text-muted">{o.role ? `· ${o.role}` : ""} · decision pending</span></span>
+                      <span className="flex shrink-0 items-center gap-1 text-[12px] text-muted tabular">{ago(o.last_inbound_at ?? o.applied_at ?? o.created_at)} <ChevronRight size={14} /></span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {t.stale.length > 0 && <p className="mt-2 text-[12px] text-muted">Job searches have long quiet stretches. That&apos;s normal.</p>}
+            </Section>
+          )}
+
+          {t.upcoming.length > 0 && (
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center justify-between border-b border-line pb-2">
+                <span className="h-section">Upcoming</span>
+                <span className="text-[12px] text-muted">{t.upcoming.length} later or undated · <span className="group-open:hidden">show</span><span className="hidden group-open:inline">hide</span></span>
+              </summary>
+              <ul className="mt-1">{t.upcoming.map((x) => <TaskItem key={x.id} task={x} today={todayStr} keyed={false} />)}</ul>
+            </details>
+          )}
+
+          {t.updates.length > 0 && (
+            <Section title="Recent activity">
+              <ul>
+                {t.updates.slice(0, 6).map((ev) => (
+                  <li key={ev.id}>
+                    <Link href={`/app/o/${ev.opportunity_id}`} className="row-hover -mx-2 flex items-center gap-3 rounded-md px-2 py-2">
+                      <OrgAvatar org={ev.org} size={28} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[14px] font-medium">{ev.org}</p>
+                        <p className="truncate text-[12px] text-muted">{KIND_LABEL[ev.kind] ?? ev.summary} · {ago(ev.at)}</p>
+                      </div>
+                      <StageBadge stage={ev.stage} />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
         </>
       )}
     </div>

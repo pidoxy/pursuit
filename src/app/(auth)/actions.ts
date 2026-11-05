@@ -36,7 +36,7 @@ export async function signup(_prev: AuthState, form: FormData): Promise<AuthStat
     token(10),
   );
   await createSession(uid);
-  redirect(safeNext(form.get("next")) ?? "/app/settings?welcome=1");
+  redirect(safeNext(form.get("next")) ?? "/app/connect");
 }
 
 export async function login(_prev: AuthState, form: FormData): Promise<AuthState> {

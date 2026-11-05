@@ -7,7 +7,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const { next } = await searchParams;
   return (
     <div className="card p-7 sm:p-9">
-      <h1 className="h-display text-3xl">Create your account</h1>
+      <h1 className="h-page">Create your account</h1>
       <p className="mt-1.5 text-ink-2">Free. Connect Gmail next and your pipeline builds itself.</p>
       <div className="mt-7"><SignupForm next={next} /></div>
       <p className="mt-6 text-center text-sm text-muted">

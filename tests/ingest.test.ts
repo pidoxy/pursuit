@@ -21,13 +21,15 @@ describe("ingestion pipeline", () => {
       mk({ extId: "1", from: "no-reply@us.greenhouse-mail.io", subject: "Thank you for applying to Anthropic", body: "We appreciate you taking the time to submit an application for the Research Resident position.", date: "2026-10-01T10:00:00Z" }),
       mk({ extId: "2", from: "no-reply@us.greenhouse-mail.io", fromName: "Anthropic Recruiting", subject: "Anthropic: next steps", body: "We'd like to invite you to a technical interview for the Research Resident position. Please share your availability by October 20.", date: "2026-10-10T10:00:00Z" }),
       mk({ extId: "3", from: "no-reply@us.greenhouse-mail.io", fromName: "Anthropic Recruiting", subject: "Your application to Anthropic", body: "Unfortunately we have decided to move forward with other candidates.", date: "2026-10-25T10:00:00Z" }),
-    ]);
+    ], { now: new Date("2027-01-15T00:00:00Z") }); // a backfill: old closings apply directly
     const opps = db.prepare(`SELECT * FROM opportunities WHERE user_id = ?`).all(U) as { org: string; stage: string; outcome: string; type: string; applied_at: string }[];
     expect(opps).toHaveLength(1);
     expect(opps[0]).toMatchObject({ org: "Anthropic", stage: "closed", outcome: "rejected", type: "fellowship" });
     expect(opps[0].applied_at).toBe("2026-10-01T10:00:00.000Z");
     const events = db.prepare(`SELECT kind FROM events WHERE user_id = ? ORDER BY at`).all(U).map((r) => (r as { kind: string }).kind);
     expect(events).toEqual(["received", "interview", "rejection"]);
+    const ev = db.prepare(`SELECT evidence FROM events WHERE user_id = ? AND kind = 'interview'`).get(U) as { evidence: string };
+    expect(ev.evidence).toMatch(/invite you to a technical interview/);
     const task = db.prepare(`SELECT title, due_at FROM tasks WHERE user_id = ?`).get(U) as { title: string; due_at: string };
     expect(task.due_at).toBe("2026-10-20");
   });
@@ -74,6 +76,37 @@ describe("ingestion pipeline", () => {
     expect(i.total).toBe(2);
     expect(i.funnel.interview).toBe(2);
     expect(i.medianDaysToResponse).toBe(9);
+  });
+
+  it("routes recent closings to Review instead of applying them", async () => {
+    await ingest(U, [
+      mk({ extId: "30", from: "no-reply@hire.lever.co", fromName: "Kestrel Labs", subject: "Your application has been received!", body: "Thank you for submitting your application to be a Software Engineer at Kestrel Labs.", date: "2026-10-28T10:00:00Z" }),
+      mk({ extId: "31", from: "no-reply@hire.lever.co", fromName: "Kestrel Labs", subject: "Update on your Kestrel Labs application", body: "Unfortunately, we have decided to move forward with other candidates.", date: "2026-11-03T10:00:00Z" }),
+    ], { now: new Date("2026-11-04T10:00:00Z") });
+    const k = db.prepare(`SELECT id, stage FROM opportunities WHERE org = 'Kestrel Labs'`).get() as { id: string; stage: string };
+    expect(k.stage).toBe("applied");
+    const m = db.prepare(`SELECT status, opportunity_id FROM messages WHERE ext_id = '31'`).get() as { status: string; opportunity_id: string };
+    expect(m).toEqual({ status: "review", opportunity_id: k.id });
+  });
+
+  it("applies ignore and alias rules", async () => {
+    db.prepare(`INSERT INTO user_rules (id, user_id, kind, match) VALUES ('r1', ?, 'ignore_domain', 'spammyjobs.com')`).run(U);
+    db.prepare(`INSERT INTO user_rules (id, user_id, kind, match, value) VALUES ('r2', ?, 'org_alias', ?, 'Northwind Health')`).run(U, "northwind");
+    await ingest(U, [
+      mk({ extId: "40", from: "alerts@mail.spammyjobs.com", subject: "Thank you for applying to Spammy", body: "We have received your application for the Analyst position.", date: "2026-11-01T10:00:00Z" }),
+      mk({ extId: "41", from: "careers@northwind.io", fromName: "Northwind Careers", subject: "Application received - ML Engineer", body: "Thank you for applying to Northwind. We have received your application for the ML Engineer position.", date: "2026-11-01T10:00:00Z" }),
+    ]);
+    expect((db.prepare(`SELECT status FROM messages WHERE ext_id = '40'`).get() as { status: string }).status).toBe("ignored");
+    expect(db.prepare(`SELECT 1 FROM opportunities WHERE org = 'Northwind Health'`).get()).toBeTruthy();
+  });
+
+  it("marks a recommender's letter as submitted from a portal email", async () => {
+    await ingest(U, [
+      mk({ extId: "50", from: "no-reply@portal.example.org", fromName: "CaCTüS Portal", subject: "Recommendation received", body: "The letter of recommendation from Prof. Ada has been submitted for your application.", date: "2026-11-02T10:00:00Z" }),
+    ]);
+    const a = db.prepare(`SELECT status, submitted_at FROM asks a JOIN people p ON p.id = a.person_id WHERE p.email = 'ada@uni.edu'`).get() as { status: string; submitted_at: string };
+    expect(a.status).toBe("submitted");
+    expect(a.submitted_at).toBe("2026-11-02T10:00:00.000Z");
   });
 
   it("unwraps manually forwarded emails", () => {
