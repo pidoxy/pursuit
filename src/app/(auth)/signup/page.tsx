@@ -10,7 +10,10 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       <h1 className="h-page">Create your account</h1>
       <p className="mt-1.5 text-ink-2">Free. Connect Gmail next and your pipeline builds itself.</p>
       <div className="mt-7"><SignupForm next={next} /></div>
-      <p className="mt-6 text-center text-sm text-muted">
+      <p className="mt-4 text-center text-[12px] text-muted">
+        By creating an account you agree to the <Link className="underline" href="/terms">terms</Link> and <Link className="underline" href="/privacy">privacy policy</Link>.
+      </p>
+      <p className="mt-4 text-center text-sm text-muted">
         Already have one? <Link className="font-semibold text-accent" href={`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`}>Sign in</Link>
       </p>
     </div>

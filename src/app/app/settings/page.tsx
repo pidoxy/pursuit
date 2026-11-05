@@ -181,6 +181,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <Section title="Your data" desc="Export everything any time. Deleting your account removes all of it.">
         <div className="flex flex-wrap gap-2">
           <a href="/api/export" className="btn btn-secondary">Export everything (JSON)</a>
+          <a href="/privacy" className="btn btn-ghost">Privacy policy</a>
           <ConfirmAction
             label="Delete account"
             className="btn btn-ghost"

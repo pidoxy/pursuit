@@ -1,3 +1,4 @@
+import { dailyBackup } from "@/lib/backup";
 import { purgeDeleted, runBriefs, runRealtime } from "@/lib/brief";
 import { syncAll } from "@/lib/gmail";
 
@@ -10,7 +11,8 @@ async function handle(req: Request) {
   const alerts = await runRealtime();
   const sent = await runBriefs();
   purgeDeleted();
-  return Response.json({ ok: true, briefs: sent, alerts });
+  const backup = await dailyBackup();
+  return Response.json({ ok: true, briefs: sent, alerts, backup: Boolean(backup) });
 }
 
 export const GET = handle;

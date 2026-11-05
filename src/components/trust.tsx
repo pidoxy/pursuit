@@ -33,5 +33,9 @@ export function TrustBlocks({ compact = false }: { compact?: boolean }) {
 }
 
 export function LimitedUse() {
-  return <p className="text-[12px] leading-4 text-muted">{TRUST.limitedUse}</p>;
+  return (
+    <p className="text-[12px] leading-4 text-muted">
+      {TRUST.limitedUse} <a href="/privacy" className="underline hover:text-ink">Privacy policy</a>
+    </p>
+  );
 }

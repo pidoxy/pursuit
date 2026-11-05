@@ -156,7 +156,7 @@ export default async function Landing() {
 
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-[12px] text-muted sm:px-6">
-          <span>Pursuit · open source · self-hostable</span>
+          <span className="flex gap-4"><span>Pursuit</span><Link href="/privacy" className="hover:text-ink">Privacy</Link><Link href="/terms" className="hover:text-ink">Terms</Link></span>
           <span className="max-w-xl">Pursuit&apos;s use of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.</span>
         </div>
       </footer>

@@ -31,3 +31,7 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
+      - key: OPERATOR_NAME
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false

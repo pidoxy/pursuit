@@ -87,6 +87,17 @@ fly deploy
 cp .env.example .env && docker compose up -d --build
 ```
 
+**Custom domain.** In Render, open **Settings → Custom Domains** and add `pursuit.yourdomain.com`. Create the CNAME record it shows at your DNS provider, then set `APP_URL=https://pursuit.yourdomain.com`. Update the Google OAuth redirect URI to match.
+
+**Backups.** Pursuit writes a consistent SQLite snapshot to `DATA_DIR/backups` once a day and keeps 7. To copy one off the server, run `render ssh` (or `fly ssh sftp get`) and fetch `/data/backups/pursuit-YYYY-MM-DD.db`.
+
+**Going public with Gmail.** Google treats `gmail.readonly` as a restricted scope. Until the app is verified, testing mode allows 100 listed test users. To verify:
+1. Use a custom domain verified in Google Search Console, with a homepage, `/privacy` and `/terms` (built in; set `OPERATOR_NAME` and `CONTACT_EMAIL`).
+2. Submit the OAuth consent screen for verification with a demo video of the consent flow and the scope justification ("reads application emails to build the user's pipeline; read-only; no sending").
+3. Complete the CASA security assessment with an approved lab. Expect weeks, and renew it every year.
+
+Until then, forwarding and import work for anyone, with no Google approval.
+
 **Forwarding (optional).** Point an inbound email provider (e.g. Postmark Inbound) at `<APP_URL>/api/inbound/postmark?secret=<INBOUND_SECRET>` and set `INBOUND_DOMAIN`. Each user gets a private address. Manually forwarded `Fwd:` emails are unwrapped to their original sender.
 
 **Email (optional).** Set `SMTP_URL` and `MAIL_FROM` for the digest (daily, weekdays or weekly at the user's hour), real-time alerts for interviews and deadlines under 48h, and receipts for forwarded emails.
